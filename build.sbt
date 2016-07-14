@@ -9,3 +9,4 @@ resolvers += Resolver.url("typesafe", url("http://repo.typesafe.com/typesafe/ivy
 libraryDependencies += "net.ruippeixotog" %% "scala-scraper" % "1.0.0"
 libraryDependencies += "org.scala-sbt" %% "io" % "0.13.9"
 libraryDependencies += "com.github.tototoshi" %% "scala-csv" % "1.3.3"
+libraryDependencies += "org.rogach" %% "scallop" % "1.0.2"

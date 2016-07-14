@@ -6,19 +6,28 @@ import net.ruippeixotog.scalascraper.browser.JsoupBrowser
 import net.ruippeixotog.scalascraper.dsl.DSL._
 import net.ruippeixotog.scalascraper.dsl.DSL.Extract._
 import net.ruippeixotog.scalascraper.dsl.DSL.Parse._
-import net.ruippeixotog.scalascraper.model.Element
+import net.ruippeixotog.scalascraper.model.{Document, Element}
 import sbt.IO.unzipURL
 import java.net.URL
 import java.io.File
+
 import com.github.tototoshi.csv._
+import org.rogach.scallop._
+
+class Conf(arguments: Seq[String]) extends ScallopConf(arguments) {
+  val months = opt[Int](default = Some(12))
+  val term = opt[String](default = Some("NetCurrentAssetsLiabilities"))
+  val outfolder = opt[String](default = Some("../company_data"))
+  verify()
+}
 
 object downloader {
 
-  def main(args: Array[String]) {
-    val term = if (args.length != 0) args(0) else "NetCurrentAssetsLiabilities"
 
+  def main(args: Array[String]) {
+    val conf = new Conf(args)
     val browser = JsoupBrowser()
-    val doc = browser.get("http://download.companieshouse.gov.uk/en_monthlyaccountsdata.html")
+    browser.get("http://download.companieshouse.gov.uk/en_monthlyaccountsdata.html")
     val link_area: List[Element] = doc >> elementList(".grid_7.push_1")
     val links: List[Element] = link_area.flatMap(_ >> elementList("a"))
     val link_urls: List[String] = links.map(_ >> attr("href")("a")).filter(a => a.contains("2015") || a.contains("2016"))

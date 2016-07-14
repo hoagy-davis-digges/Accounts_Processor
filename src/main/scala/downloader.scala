@@ -67,7 +67,8 @@ object downloader {
 
     url_list.par.foreach {
       url_string =>
-        val csv = new File(folder.getParent + "/" + url_string + ".csv")
+        val filename = url_string.split("/|\\.").init.last
+        val csv = new File(folder.getParent + "/" + filename + ".csv")
         val writer = CSVWriter.open(csv)
         writer.writeRow(List("Company Number", term))
         val month_folder = new File(folder.getPath + "/" + url_string)

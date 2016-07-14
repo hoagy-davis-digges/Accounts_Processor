@@ -15,6 +15,7 @@ import com.github.tototoshi.csv._
 object downloader {
 
   def main(args: Array[String]) {
+    val term = if (args.length != 0) args(0) else "NetCurrentAssetsLiabilities"
 
     val browser = JsoupBrowser()
     val doc = browser.get("http://download.companieshouse.gov.uk/en_monthlyaccountsdata.html")
@@ -22,7 +23,7 @@ object downloader {
     val links: List[Element] = link_area.flatMap(_ >> elementList("a"))
     val link_urls: List[String] = links.map(_ >> attr("href")("a")).filter(a => a.contains("2015") || a.contains("2016"))
     val last_12 = link_urls.takeRight(12)
-    val url_list = last_12.map(u => "http://download.companieshouse.gov.uk/" + u )
+    val url_list = last_12.map(u => "http://download.companieshouse.gov.uk/" + u)
     val folder = new File("/Users/hoagydavis-digges/test")
     folder.mkdirs
 
@@ -30,7 +31,7 @@ object downloader {
       url_string =>
         val csv = new File(folder.getParent + "/" + url_string + ".csv")
         val writer = CSVWriter.open(csv)
-        writer.writeRow(List("Current "))
+        writer.writeRow(List("Company Number", term))
         val month_folder = new File(folder.getPath + "/" + url_string)
         month_folder.mkdirs()
         unzipURL(new URL(url_string), month_folder)
@@ -38,7 +39,21 @@ object downloader {
           .foreach {
             file =>
               val f = browser.get(file.toString)
-              val current_assets = f >> text("#currentCurrentAssets")
+              val company_num = file.getName.split("_")(2)
+              val all_matches = f >> elementList(s"class$$=[$term]")
+              if (all_matches.length == 1) {
+                return List(company_num, all_matches.head.text)
+              } else if (all_matches.length > 1) {
+                val recent = all_matches.sortBy {
+                  one_match =>
+                    val context_id = one_match.attr("contextRef")
+                    val date = f >> extractor(s"context#$context_id", text, asDate("yyyy-MM-dd"))
+                    date.getMillis
+                }(Ordering[Long].reverse).head.text
+                return List(company_num, recent)
+              }
+
+
           }
 
     }

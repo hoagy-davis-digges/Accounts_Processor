@@ -50,6 +50,8 @@ object downloader {
           date.getMillis
       }(Ordering[Long].reverse).head
       recent.text
+    } else {
+      None
     }
   }
 
@@ -77,7 +79,9 @@ object downloader {
               val f = browser.parseFile(file)
               val company_num = file.getName.split("_")(2)
               val recent = get_most_recent_term(f, term)
-              writer.writeRow(List(company_num, recent))
+              if (recent != None) {
+                writer.writeRow(List(company_num, recent))
+              }
           }
     }
   }

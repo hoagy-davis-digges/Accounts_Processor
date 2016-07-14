@@ -24,7 +24,7 @@ object downloader {
     val link_urls: List[String] = links.map(_ >> attr("href")("a")).filter(a => a.contains("2015") || a.contains("2016"))
     val last_12 = link_urls.takeRight(12)
     val url_list = last_12.map(u => "http://download.companieshouse.gov.uk/" + u)
-    val folder = new File("/Users/hoagydavis-digges/test")
+    val folder = new File("../test_data")
     folder.mkdirs
 
     url_list.par.foreach {
@@ -42,7 +42,7 @@ object downloader {
               val company_num = file.getName.split("_")(2)
               val all_matches = f >> elementList(s"class$$=[$term]")
               if (all_matches.length == 1) {
-                return List(company_num, all_matches.head.text)
+                writer.writeRow(List(company_num, all_matches.head.text))
               } else if (all_matches.length > 1) {
                 val recent = all_matches.sortBy {
                   one_match =>
@@ -50,7 +50,7 @@ object downloader {
                     val date = f >> extractor(s"context#$context_id", text, asDate("yyyy-MM-dd"))
                     date.getMillis
                 }(Ordering[Long].reverse).head.text
-                return List(company_num, recent)
+                writer.writeRow(List(company_num, recent))
               }
 
 

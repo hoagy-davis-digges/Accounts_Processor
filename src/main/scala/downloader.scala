@@ -46,9 +46,9 @@ object downloader {
       val recent = all_matches.sortBy {
         one_match =>
           val context_id = one_match.attr("contextRef")
-          val date = doc >> extractor(s"context#$context_id period", text, asDate("yyyy-MM-dd"))
-          date.getMillis
-      }(Ordering[Long].reverse).head
+          val date = doc >?> extractor(s"context#$context_id period", text, asDate("yyyy-MM-dd"))
+          date.getOrElse(new DateTime(0)).getMillis
+      }.last
       recent.text.replace(",", "")
     } else {
       None

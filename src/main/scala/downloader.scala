@@ -12,6 +12,8 @@ import java.net.URL
 import java.io.File
 
 import com.github.tototoshi.csv._
+import org.joda.time.DateTime
+import org.joda.time.format.DateTimeFormat
 import org.rogach.scallop._
 
 class Conf(arguments: Seq[String]) extends ScallopConf(arguments) {
@@ -23,18 +25,43 @@ class Conf(arguments: Seq[String]) extends ScallopConf(arguments) {
 
 object downloader {
 
-
-  def main(args: Array[String]) {
-    val conf = new Conf(args)
+  def get_urls(months: Int): List[String] = {
     val browser = JsoupBrowser()
-    browser.get("http://download.companieshouse.gov.uk/en_monthlyaccountsdata.html")
+    val format = DateTimeFormat.forPattern("MMMMyyyy")
+
+    val doc = browser.get("http://download.companieshouse.gov.uk/en_monthlyaccountsdata.html")
     val link_area: List[Element] = doc >> elementList(".grid_7.push_1")
     val links: List[Element] = link_area.flatMap(_ >> elementList("a"))
-    val link_urls: List[String] = links.map(_ >> attr("href")("a")).filter(a => a.contains("2015") || a.contains("2016"))
-    val last_12 = link_urls.takeRight(12)
-    val url_list = last_12.map(u => "http://download.companieshouse.gov.uk/" + u)
-    val folder = new File("../test_data")
+    val link_urls: List[String] = links.map(_ >> attr("href")("a"))
+    val ordered_urls = link_urls.sortBy(url => DateTime.parse(url.split("-|\\.")(1), format).getMillis)
+
+    link_urls.takeRight(months).map(u => "http://download.companieshouse.gov.uk/" + u)
+  }
+
+  def get_most_recent_term(doc: Document, term: String) = {
+    val all_matches = doc >> elementList(s"class$$=[$term]")
+    if (all_matches.length == 1) {
+      all_matches.head.text
+    } else if (all_matches.length > 1) {
+      val recent = all_matches.sortBy {
+        one_match =>
+          val context_id = one_match.attr("contextRef")
+          val date = doc >> extractor(s"context#$context_id", text, asDate("yyyy-MM-dd"))
+          date.getMillis
+      }(Ordering[Long].reverse).head
+      recent.text
+    }
+  }
+
+
+  def main(args: Array[String]) {
+
+    val conf = new Conf(args)
+    val url_list = get_urls(conf.months())
+    val term = conf.term()
+    val folder = new File(conf.outfolder())
     folder.mkdirs
+    val browser = JsoupBrowser()
 
     url_list.par.foreach {
       url_string =>
@@ -47,24 +74,11 @@ object downloader {
           .par
           .foreach {
             file =>
-              val f = browser.get(file.toString)
+              val f = browser.parseFile(file)
               val company_num = file.getName.split("_")(2)
-              val all_matches = f >> elementList(s"class$$=[$term]")
-              if (all_matches.length == 1) {
-                writer.writeRow(List(company_num, all_matches.head.text))
-              } else if (all_matches.length > 1) {
-                val recent = all_matches.sortBy {
-                  one_match =>
-                    val context_id = one_match.attr("contextRef")
-                    val date = f >> extractor(s"context#$context_id", text, asDate("yyyy-MM-dd"))
-                    date.getMillis
-                }(Ordering[Long].reverse).head.text
-                writer.writeRow(List(company_num, recent))
-              }
-
-
+              val recent = get_most_recent_term(f, term)
+              writer.writeRow(List(company_num, recent))
           }
-
     }
   }
 }

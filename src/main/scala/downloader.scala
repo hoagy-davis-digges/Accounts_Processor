@@ -41,7 +41,7 @@ object downloader {
   def get_most_recent_term(doc: Document, term: String) = {
     val all_matches = doc >> elementList(s"[name$$=$term]")
     if (all_matches.length == 1) {
-      all_matches.head.text
+      all_matches.head.text.replace(",", "")
     } else if (all_matches.length > 1) {
       val recent = all_matches.sortBy {
         one_match =>
@@ -49,7 +49,7 @@ object downloader {
           val date = doc >> extractor(s"context#$context_id period", text, asDate("yyyy-MM-dd"))
           date.getMillis
       }(Ordering[Long].reverse).head
-      recent.text
+      recent.text.replace(",", "")
     } else {
       None
     }
